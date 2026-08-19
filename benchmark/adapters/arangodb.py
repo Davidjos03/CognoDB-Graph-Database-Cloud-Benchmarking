@@ -276,7 +276,11 @@ class ArangoDBAdapter(BaseGraphAdapter):
     def _query(self, query: str, **bind_variables: object) -> list:
         database = self._require_database()
         try:
-            cursor = database.aql.execute(query, bind_vars=bind_variables or None)
+            cursor = database.aql.execute(
+                query,
+                bind_vars=bind_variables or None,
+                max_runtime=self.settings.query_timeout_s,
+            )
             return list(cursor)
         except Exception as exc:
             raise AdapterError(f"{self.name}: query failed: {describe_error(exc)}") from exc

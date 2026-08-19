@@ -16,7 +16,7 @@ import time
 import uuid
 from typing import Iterable
 
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, Query
 
 from benchmark.adapters.base import AdapterError, BaseGraphAdapter, batched
 from benchmark.config import NOT_OBSERVABLE
@@ -121,6 +121,7 @@ class BoltAdapter(BaseGraphAdapter):
         self._driver = None
         self._session = None
         self._server_agent = NOT_OBSERVABLE
+        self._timed: dict[str, Query] = {}
 
     def connect(self) -> None:
         """Open a session, retrying a few times.
@@ -330,9 +331,23 @@ class BoltAdapter(BaseGraphAdapter):
         if self._session is None:
             raise AdapterError(f"{self.name}: not connected; call connect() first")
         try:
-            return self._session.run(query, **parameters)
+            return self._session.run(self._with_timeout(query), **parameters)
         except Exception as exc:
             raise AdapterError(f"{self.name}: query failed: {describe_error(exc)}") from exc
+
+    def _with_timeout(self, text: str) -> Query:
+        """Attach the configured timeout as a server-side transaction timeout.
+
+        A ``Query`` object carries the timeout on an auto-commit statement, so a
+        stuck query is cancelled by the server instead of hanging the run — and
+        without the extra round trips an explicit transaction would add to every
+        measured operation.
+        """
+        timed = self._timed.get(text)
+        if timed is None:
+            timed = Query(text, timeout=self.settings.query_timeout_s)
+            self._timed[text] = timed
+        return timed
 
     def _single(self, query: str, **parameters: object) -> dict | None:
         result = self._run(query, **parameters)

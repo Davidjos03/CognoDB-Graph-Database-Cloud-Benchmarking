@@ -57,6 +57,16 @@ def test_every_adapter_implements_the_whole_interface(adapter_class):
     assert not missing, f"{adapter_class.__name__} does not implement {sorted(missing)}"
 
 
+def test_bolt_queries_carry_the_configured_timeout():
+    adapter = adapters.create(target("cognodb", "bolt"), SETTINGS)
+
+    timed = adapter._with_timeout(bolt.PING)
+
+    assert timed.timeout == SETTINGS.query_timeout_s
+    # Reused rather than rebuilt per iteration, so measuring adds no work.
+    assert adapter._with_timeout(bolt.PING) is timed
+
+
 def test_an_unauthenticated_target_sends_no_auth_at_all():
     # Memgraph's default is no auth; ("", "") would be a failed basic-auth attempt.
     adapter = adapters.create(target("memgraph", "memgraph"), SETTINGS)

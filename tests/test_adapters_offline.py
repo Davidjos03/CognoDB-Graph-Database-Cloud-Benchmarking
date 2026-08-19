@@ -51,11 +51,15 @@ class StubGraph:
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict | None]] = []
+        self.timeouts: list[int | None] = []
         self.answers: list[list[list]] = []
         self.deleted = 0
 
-    def query(self, statement: str, params: dict | None = None) -> StubResult:
+    def query(
+        self, statement: str, params: dict | None = None, timeout: int | None = None
+    ) -> StubResult:
         self.calls.append((statement, params))
+        self.timeouts.append(timeout)
         rows = self.answers.pop(0) if self.answers else []
         return StubResult(rows)
 
@@ -97,6 +101,7 @@ def falkor(monkeypatch):
     adapter = falkordb.FalkorDBAdapter(target("falkordb", "falkordb"), SETTINGS)
     adapter.connect()
     graph.calls.clear()  # drop the connection ping
+    graph.timeouts.clear()
     return adapter, graph
 
 
@@ -171,6 +176,14 @@ def test_falkordb_reports_a_real_memory_footprint(falkor):
     assert footprint["loaded_nodes"] == 7115
 
 
+def test_falkordb_applies_the_configured_timeout_in_milliseconds(falkor):
+    adapter, graph = falkor
+
+    adapter.ping()
+
+    assert graph.timeouts == [int(SETTINGS.query_timeout_s * 1000)]
+
+
 def test_falkordb_refuses_to_query_before_connecting():
     adapter = falkordb.FalkorDBAdapter(target("falkordb", "falkordb"), SETTINGS)
 
@@ -198,8 +211,11 @@ class StubAql:
     def __init__(self, owner: "StubDatabase") -> None:
         self._owner = owner
 
-    def execute(self, query: str, bind_vars: dict | None = None) -> StubCursor:
+    def execute(
+        self, query: str, bind_vars: dict | None = None, max_runtime: float | None = None
+    ) -> StubCursor:
         self._owner.calls.append((query, bind_vars))
+        self._owner.runtimes.append(max_runtime)
         return StubCursor(self._owner.answers.pop(0) if self._owner.answers else [])
 
 
@@ -230,6 +246,7 @@ class StubDatabase:
     def __init__(self, name: str) -> None:
         self.name = name
         self.calls: list[tuple[str, dict | None]] = []
+        self.runtimes: list[float | None] = []
         self.answers: list[list] = []
         self.collections: dict[str, StubCollection] = {}
         self.created_databases: list[str] = []
@@ -358,6 +375,14 @@ def test_arangodb_reports_a_real_stored_size(arango):
     assert footprint["server"] == "ArangoDB/3.12.4"
     assert footprint["stored_data_size"] == "users: 4194304 bytes"
     assert footprint["loaded_relationships"] == 103689
+
+
+def test_arangodb_caps_query_runtime_with_the_configured_timeout(arango):
+    adapter, database = arango
+
+    adapter.ping()
+
+    assert database.runtimes == [SETTINGS.query_timeout_s]
 
 
 def test_arangodb_refuses_to_query_before_connecting():

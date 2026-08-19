@@ -60,6 +60,8 @@ class FalkorDBAdapter(BaseGraphAdapter):
         self._client = None
         self._graph = None
         self._server = NOT_OBSERVABLE
+        # FalkorDB takes the query timeout in milliseconds.
+        self._timeout_ms = int(self.settings.query_timeout_s * 1000)
 
     def connect(self) -> None:
         last_error = ""
@@ -224,7 +226,9 @@ class FalkorDBAdapter(BaseGraphAdapter):
         if self._graph is None:
             raise AdapterError(f"{self.name}: not connected; call connect() first")
         try:
-            result = self._graph.query(query, params=parameters or None)
+            result = self._graph.query(
+                query, params=parameters or None, timeout=self._timeout_ms
+            )
         except Exception as exc:
             raise AdapterError(f"{self.name}: query failed: {describe_error(exc)}") from exc
         return result.result_set or []
