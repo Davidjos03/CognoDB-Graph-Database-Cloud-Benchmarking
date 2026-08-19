@@ -1,0 +1,119 @@
+# Self-hosted comparators, every one capped to the same resources as the
+# CognoDB free instance so no database gets a hardware advantage.
+#
+# The caps are the point of this file: 0.5 vCPU and 512 MB RAM per container,
+# set through BENCH_CPUS / BENCH_MEMORY so a reviewer can change them in one
+# place and re-run. Each engine additionally gets its own internal memory
+# settings, because a JVM or an in-memory store that is not told about the cap
+# will simply be killed by the kernel instead of running slowly.
+#
+#   docker compose up -d --wait
+#   docker compose down -v      # -v also drops the data volumes
+#
+# Verify the caps after start-up with:
+#   docker stats --no-stream --format "{{.Name}} {{.CPUPerc}} {{.MemUsage}}"
+
+x-caps: &caps
+  cpus: ${BENCH_CPUS:-0.5}
+  mem_limit: ${BENCH_MEMORY:-512m}
+  restart: unless-stopped
+
+services:
+  neo4j:
+    <<: *caps
+    image: neo4j:5.26-community
+    container_name: bench-neo4j
+    ports:
+      - "7687:7687" # bolt
+      - "7474:7474" # browser, handy for eyeballing the loaded graph
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_LOCAL_PASSWORD:-benchmark-neo4j}
+      # 256 MB heap + 64 MB page cache keeps the JVM inside a 512 MB cap.
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 256m
+      NEO4J_server_memory_pagecache_size: 64m
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u neo4j -p ${NEO4J_LOCAL_PASSWORD:-benchmark-neo4j} 'RETURN 1' || exit 1",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  memgraph:
+    <<: *caps
+    image: memgraph/memgraph:2.22.0
+    container_name: bench-memgraph
+    ports:
+      - "7688:7687" # bolt, shifted so it can run beside Neo4j
+    # Memgraph keeps the graph in RAM, so it must be told the cap in MiB.
+    command:
+      - "--telemetry-enabled=false"
+      - "--memory-limit=384"
+      - "--log-level=WARNING"
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
+  falkordb:
+    <<: *caps
+    image: falkordb/falkordb:v4.4.4
+    container_name: bench-falkordb
+    ports:
+      - "6379:6379"
+    environment:
+      # Also in-memory: cap the store below the container limit and refuse
+      # writes rather than being OOM-killed mid-benchmark.
+      REDIS_ARGS: "--maxmemory 384mb --maxmemory-policy noeviction --save ''"
+    volumes:
+      - falkordb-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  arangodb:
+    <<: *caps
+    image: arangodb:3.12.4
+    container_name: bench-arangodb
+    ports:
+      - "8529:8529"
+    environment:
+      ARANGO_ROOT_PASSWORD: ${ARANGODB_LOCAL_PASSWORD:-benchmark-arango}
+    # ArangoDB sizes its caches from host RAM, not from the cgroup limit, so
+    # they are set explicitly to fit a 512 MB container.
+    command:
+      - "arangod"
+      - "--rocksdb.block-cache-size=67108864"
+      - "--rocksdb.total-write-buffer-size=67108864"
+      - "--rocksdb.write-buffer-size=16777216"
+      - "--rocksdb.max-total-wal-size=67108864"
+      - "--cache.size=33554432"
+      - "--server.statistics=true"
+    volumes:
+      - arangodb-data:/var/lib/arangodb3
+    healthcheck:
+      test: ["CMD-SHELL", "arangosh --server.password $$ARANGO_ROOT_PASSWORD --javascript.execute-string 'print(1)' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  neo4j-data:
+  memgraph-data:
+  falkordb-data:
+  arangodb-data:

@@ -121,6 +121,11 @@ class ArangoDBAdapter(BaseGraphAdapter):
     def _open(self) -> None:
         self._client = ArangoClient(hosts=self.target.uri)
         name = self.target.database or "_system"
+        system = self._client.db(
+            "_system", username=self.target.username, password=self.target.password, verify=True
+        )
+        if name != "_system" and not system.has_database(name):
+            system.create_database(name)
         self._database = self._client.db(
             name, username=self.target.username, password=self.target.password, verify=True
         )
