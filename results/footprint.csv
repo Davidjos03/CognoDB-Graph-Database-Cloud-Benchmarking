@@ -1,0 +1,2 @@
+platform,configured_specs,server,indexes,stored_data_size,loaded_nodes,loaded_relationships
+cognodb,"free c0, burstable 0.5 vCPU / 512 MB RAM (console) / 1 GB disk, region us-east4",Neo4j/5.26.0,"User(group_id), User(node_id)",not observable,7115,103689

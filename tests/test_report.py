@@ -131,6 +131,18 @@ def test_a_platform_without_an_ingest_run_still_reports_its_reads():
     assert summary.reads
 
 
+def test_a_skip_load_run_keeps_the_load_figures_of_the_run_that_measured_them():
+    summary = report.summarise(
+        [
+            run("cognodb", "2026-08-19T10:00:00+00:00", p50=400.0),
+            run("cognodb", "2026-08-19T12:00:00+00:00", p50=360.0, ingest=False),
+        ]
+    )
+
+    assert len(summary.ingest) == 1
+    assert summary.ingest[0]["measured_at"] == "2026-08-19T10:00:00+00:00"
+
+
 def test_csvs_hold_every_summarised_row(tmp_path):
     summary = report.summarise([run("cognodb", "2026-08-19T10:00:00+00:00", p50=360.0)])
     written = report.write_csvs(summary, tmp_path)

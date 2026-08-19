@@ -1,0 +1,2 @@
+platform,measured_at,node_count,relationship_count,node_load_s,relationship_load_s,total_load_s,nodes_per_second,relationships_per_second
+cognodb,2026-08-19T12:59:17+00:00,7115,103689,4.141,69.693,73.833,1718.33,1487.8
