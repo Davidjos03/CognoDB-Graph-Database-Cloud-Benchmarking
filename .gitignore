@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Downloaded dataset archives and derived CSVs (regenerate with `download-data`)
+data/raw/
+data/*.csv
