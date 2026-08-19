@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PLATFORMS: dict[str, str] = {
     "cognodb": "bolt",
     "neo4j": "bolt",
-    "memgraph": "bolt",
+    "memgraph": "memgraph",  # Bolt, but its own index syntax
     "falkordb": "falkordb",
     "arangodb": "arangodb",
 }

@@ -6,12 +6,18 @@ class that implements it. Adding a database means adding one adapter here.
 
 from __future__ import annotations
 
+from benchmark.adapters.arangodb import ArangoDBAdapter
 from benchmark.adapters.base import AdapterError, BaseGraphAdapter
 from benchmark.adapters.bolt import BoltAdapter
+from benchmark.adapters.falkordb import FalkorDBAdapter
+from benchmark.adapters.memgraph import MemgraphAdapter
 from benchmark.config import Settings, Target
 
 ADAPTERS: dict[str, type[BaseGraphAdapter]] = {
     "bolt": BoltAdapter,
+    "memgraph": MemgraphAdapter,
+    "falkordb": FalkorDBAdapter,
+    "arangodb": ArangoDBAdapter,
 }
 
 
@@ -22,4 +28,13 @@ def create(target: Target, settings: Settings) -> BaseGraphAdapter:
     return adapter_class(target, settings)
 
 
-__all__ = ["ADAPTERS", "AdapterError", "BaseGraphAdapter", "BoltAdapter", "create"]
+__all__ = [
+    "ADAPTERS",
+    "AdapterError",
+    "ArangoDBAdapter",
+    "BaseGraphAdapter",
+    "BoltAdapter",
+    "FalkorDBAdapter",
+    "MemgraphAdapter",
+    "create",
+]
