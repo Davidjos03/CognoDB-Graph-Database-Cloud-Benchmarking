@@ -39,6 +39,7 @@ def run(platform: str, started_at: str, *, p50: float, ingest: bool = True) -> d
                 "p95_ms": p50 + 10,
                 "p99_ms": p50 + 20,
                 "ops_per_second": 2.7,
+                "warmup": {"first_ms": p50 + 900, "p50_ms": p50 + 5, "max_ms": p50 + 900},
             }
         ],
         "mixed": [
@@ -164,6 +165,25 @@ def test_footprint_csv_flattens_the_index_list(tmp_path):
     rows = list(csv.DictReader((tmp_path / report.FOOTPRINT_CSV).open(encoding="utf-8")))
     assert rows[0]["indexes"] == "User(node_id), User(group_id)"
     assert rows[0]["stored_data_size"] == "not observable"
+
+
+def test_warm_up_cost_is_reported_separately_from_measured_latency():
+    summary = report.summarise([run("cognodb", "2026-08-19T10:00:00+00:00", p50=360.0)])
+    row = summary.reads[0]
+
+    # The first call is reported, never blended into the measured percentiles.
+    assert row["warmup_first_ms"] == 1260.0
+    assert row["p50_ms"] == 360.0
+
+
+def test_an_older_result_without_warm_up_data_still_reports(tmp_path):
+    payload = run("cognodb", "2026-08-19T10:00:00+00:00", p50=360.0)
+    del payload["workloads"][0]["warmup"]
+
+    summary = report.summarise([payload])
+    report.write_markdown(summary, tmp_path)
+
+    assert summary.reads[0]["warmup_first_ms"] is None
 
 
 def test_markdown_tables_carry_the_caveats(tmp_path):

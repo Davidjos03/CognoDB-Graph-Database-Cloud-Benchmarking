@@ -69,6 +69,31 @@ def test_measure_caps_stored_failure_samples_but_not_the_count():
     assert measurement.to_dict()["failures"] == iterations
 
 
+def test_warmup_latencies_are_kept_but_excluded_from_the_percentiles():
+    measurement = metrics.measure("reads", lambda _: None, iterations=4, warmup=2)
+    payload = measurement.to_dict()
+
+    assert len(measurement.warmup_latencies_ms) == 2
+    assert len(measurement.latencies_ms) == 4
+    assert set(payload["warmup"]) == {"first_ms", "p50_ms", "max_ms"}
+
+
+def test_a_run_without_warmup_reports_no_warmup_block():
+    payload = metrics.measure("reads", lambda _: None, iterations=2, warmup=0).to_dict()
+
+    assert "warmup" not in payload
+
+
+def test_combine_merges_the_warmup_latencies_of_every_client():
+    parts = [
+        metrics.measure("client", lambda _: None, iterations=2, warmup=2) for _ in range(3)
+    ]
+
+    combined = metrics.combine("mixed", parts, concurrency=3, wall_time_s=1.0)
+
+    assert len(combined.warmup_latencies_ms) == 6
+
+
 def test_measure_survives_failing_warmup_iterations():
     calls = itertools.count()
 

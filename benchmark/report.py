@@ -39,6 +39,8 @@ SUMMARY_FIELDS = (
     "p95_ms",
     "p99_ms",
     "ops_per_second",
+    "warmup_first_ms",
+    "warmup_p50_ms",
     "runs",
     "p50_spread_ms",
 )
@@ -179,6 +181,7 @@ def _row(
     spread: float | None,
     runs: int,
 ) -> dict:
+    warmup = measurement.get("warmup") or {}
     return {
         "platform": platform,
         "category": category,
@@ -191,6 +194,8 @@ def _row(
         "p95_ms": measurement.get("p95_ms"),
         "p99_ms": measurement.get("p99_ms"),
         "ops_per_second": measurement.get("ops_per_second"),
+        "warmup_first_ms": warmup.get("first_ms"),
+        "warmup_p50_ms": warmup.get("p50_ms"),
         "runs": runs,
         "p50_spread_ms": spread,
     }
@@ -292,6 +297,20 @@ def write_markdown(summary: Summary, results_dir: Path) -> Path:
                     f"{row['failures']}/{row['attempted']}",
                     str(row["runs"]),
                     _number(row["p50_spread_ms"]),
+                )
+                for row in summary.reads
+            ],
+        ),
+        "## Warm-up versus measured (first touch, ms)",
+        _markdown_table(
+            ("Platform", "Workload", "First warm-up call", "Warm-up p50", "Measured p50"),
+            [
+                (
+                    row["platform"],
+                    row["workload"],
+                    _number(row["warmup_first_ms"]),
+                    _number(row["warmup_p50_ms"]),
+                    _number(row["p50_ms"]),
                 )
                 for row in summary.reads
             ],

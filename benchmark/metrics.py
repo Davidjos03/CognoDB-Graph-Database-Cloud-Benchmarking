@@ -66,6 +66,9 @@ class Measurement:
     wall_time_s: float = 0.0
     concurrency: int = 1
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # Warm-up latencies are excluded from every reported percentile, but kept so
+    # the cost of first contact can be reported separately instead of discarded.
+    warmup_latencies_ms: tuple[float, ...] = field(default_factory=tuple)
 
     @property
     def successes(self) -> int:
@@ -93,6 +96,12 @@ class Measurement:
             "failure_samples": [failure.to_dict() for failure in self.failure_samples],
             "notes": list(self.notes),
         }
+        if self.warmup_latencies_ms:
+            summary["warmup"] = {
+                "first_ms": _round(self.warmup_latencies_ms[0]),
+                "p50_ms": _round(percentile(self.warmup_latencies_ms, 50)),
+                "max_ms": _round(max(self.warmup_latencies_ms)),
+            }
         if self.latencies_ms:
             summary |= {
                 "p50_ms": _round(percentile(self.latencies_ms, 50)),
@@ -122,11 +131,15 @@ def measure(
     if iterations < 1:
         raise MetricsError("iterations must be at least 1")
 
+    warmup_latencies_ms: list[float] = []
     for iteration in range(warmup):
+        started = time.perf_counter_ns()
         try:
             operation(iteration)
         except Exception as exc:  # driver errors vary widely; warm-up must not abort a run
             log.warning("%s: warm-up iteration %d failed: %s", name, iteration, describe_error(exc))
+            continue
+        warmup_latencies_ms.append((time.perf_counter_ns() - started) / NS_PER_MS)
 
     latencies_ms: list[float] = []
     failures: list[Failure] = []
@@ -158,6 +171,7 @@ def measure(
         wall_time_s=wall_time_s,
         concurrency=concurrency,
         notes=tuple(notes),
+        warmup_latencies_ms=tuple(warmup_latencies_ms),
     )
 
 
@@ -175,6 +189,7 @@ def combine(
     sum of the clients' own timings, so throughput reflects real concurrency.
     """
     latencies: list[float] = []
+    warmup_latencies: list[float] = []
     failures: list[Failure] = []
     attempted = 0
     failure_count = 0
@@ -182,6 +197,7 @@ def combine(
 
     for part in parts:
         latencies.extend(part.latencies_ms)
+        warmup_latencies.extend(part.warmup_latencies_ms)
         attempted += part.attempted
         failure_count += part.failure_count
         warmup = max(warmup, part.warmup_iterations)
@@ -199,6 +215,7 @@ def combine(
         wall_time_s=wall_time_s,
         concurrency=concurrency,
         notes=tuple(notes),
+        warmup_latencies_ms=tuple(warmup_latencies),
     )
 
 
