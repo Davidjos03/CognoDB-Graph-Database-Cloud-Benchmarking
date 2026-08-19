@@ -57,6 +57,28 @@ def test_every_adapter_implements_the_whole_interface(adapter_class):
     assert not missing, f"{adapter_class.__name__} does not implement {sorted(missing)}"
 
 
+def test_an_unauthenticated_target_sends_no_auth_at_all():
+    # Memgraph's default is no auth; ("", "") would be a failed basic-auth attempt.
+    adapter = adapters.create(target("memgraph", "memgraph"), SETTINGS)
+    adapter.target = Target(
+        name="memgraph",
+        kind="memgraph",
+        uri="bolt://localhost:7688",
+        username="",
+        password="",
+        database="memgraph",
+        specs="capped",
+    )
+
+    assert adapter._auth() is None
+
+
+def test_a_credentialed_target_still_authenticates():
+    adapter = adapters.create(target("cognodb", "bolt"), SETTINGS)
+
+    assert adapter._auth() == (adapter.target.username, adapter.target.password)
+
+
 def test_memgraph_uses_its_own_index_syntax():
     # The Neo4j 5 form is a syntax error on Memgraph, and vice versa.
     assert all("IF NOT EXISTS" not in statement for statement in memgraph.CREATE_INDEXES)

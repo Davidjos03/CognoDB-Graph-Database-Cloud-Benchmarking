@@ -168,7 +168,7 @@ class BoltAdapter(BaseGraphAdapter):
         timeout = self.settings.query_timeout_s
         self._driver = GraphDatabase.driver(
             self.target.uri,
-            auth=(self.target.username, self.target.password),
+            auth=self._auth(),
             connection_timeout=timeout,
             connection_acquisition_timeout=timeout,
             max_transaction_retry_time=timeout,
@@ -177,6 +177,17 @@ class BoltAdapter(BaseGraphAdapter):
         self._session = self._driver.session(database=self.target.database or None)
         summary = self._session.run(PING).consume()
         self._server_agent = summary.server.agent or NOT_OBSERVABLE
+
+    def _auth(self) -> tuple[str, str] | None:
+        """``None`` for a database with authentication disabled.
+
+        Memgraph runs unauthenticated by default. Sending empty strings is not
+        the same as sending nothing: the driver would attempt basic auth with an
+        empty principal, which such a server rejects.
+        """
+        if not self.target.username and not self.target.password:
+            return None
+        return (self.target.username, self.target.password)
 
     def close(self) -> None:
         for resource in (self._session, self._driver):
