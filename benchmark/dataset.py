@@ -122,11 +122,27 @@ def sample_start_nodes(dataset: Dataset, count: int, seed: int) -> list[int]:
     Only nodes with at least one outgoing edge are eligible, so a traversal
     measures graph work rather than empty results.
     """
-    if count < 1:
-        raise DatasetError("count must be at least 1")
     candidates = sorted({source for source, _ in dataset.edges})
     if not candidates:
         raise DatasetError("dataset has no node with an outgoing relationship")
+    return _sample(candidates, count, seed)
+
+
+def sample_node_ids(dataset: Dataset, count: int, seed: int) -> list[int]:
+    """Pick nodes for point lookups, including those with no outgoing edges."""
+    if not dataset.node_ids:
+        raise DatasetError("dataset has no nodes")
+    return _sample(list(dataset.node_ids), count, seed)
+
+
+def sample_group_ids(count: int, seed: int) -> list[int]:
+    """Pick ``group_id`` values for the filtered lookup workload."""
+    return _sample(list(range(GROUP_COUNT)), count, seed)
+
+
+def _sample(candidates: list[int], count: int, seed: int) -> list[int]:
+    if count < 1:
+        raise DatasetError("count must be at least 1")
     rng = Random(seed)
     if count <= len(candidates):
         return rng.sample(candidates, count)

@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from benchmark import __version__, adapters, config, dataset, loader, results
+from benchmark import __version__, adapters, config, dataset, loader, results, runner
 from benchmark.log import setup_logging
 
 log = logging.getLogger("benchmark")
@@ -58,6 +58,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     load.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to load")
     load.set_defaults(handler=cmd_load)
+
+    run = subparsers.add_parser(
+        "benchmark", help="load and measure every workload, writing one result file per platform"
+    )
+    run.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to benchmark")
+    run.add_argument(
+        "--skip-load",
+        action="store_true",
+        help="measure the data already in the database instead of reloading it",
+    )
+    run.set_defaults(handler=cmd_benchmark)
 
     return parser
 
@@ -213,6 +224,46 @@ def _load_one(
     for caveat in adapter.caveats:
         result.add_caveat(caveat)
     result.save(settings.raw_results_dir)
+
+
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    """Run every workload on every configured platform and save the results."""
+    settings = config.load_settings()
+    targets = config.load_targets(args.targets)
+    if not targets:
+        log.error("no platform is configured; nothing to benchmark")
+        return 1
+
+    data = dataset.load_csv(settings.data_dir)
+    dataset.validate(data)
+    dataset_metadata = dataset.read_metadata(settings.data_dir)
+
+    if args.dry_run:
+        for target in targets:
+            log.info(
+                "would benchmark %s: %d warm-up and %d measured iterations per workload%s",
+                target.name,
+                settings.warmup_iterations,
+                settings.measured_iterations,
+                "" if not args.skip_load else " (load skipped)",
+            )
+        return 0
+
+    failed: list[str] = []
+    for target in targets:
+        try:
+            result = runner.run_platform(
+                target, settings, data, dataset_metadata, load=not args.skip_load
+            )
+            result.save(settings.raw_results_dir)
+        except adapters.AdapterError as exc:
+            log.error("%s", exc)
+            failed.append(target.name)
+
+    if failed:
+        log.error("benchmark failed for: %s", ", ".join(failed))
+        return 4
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -167,6 +167,9 @@ class BoltAdapter(BaseGraphAdapter):
             raise AdapterError(f"{self.name}: smoke test could not match and delete its own node")
         log.info("%s: smoke test passed (create, match, delete)", self.name)
 
+    def ping(self) -> None:
+        self._single(PING)
+
     def reset_test_data(self) -> None:
         self.cleanup_writes()
         deleted = self._delete_in_batches(DELETE_NODES)

@@ -61,6 +61,9 @@ class FakeAdapter(BaseGraphAdapter):
     def smoke_test(self) -> None:
         self._record("smoke_test")
 
+    def ping(self) -> None:
+        self._record("ping")
+
     def reset_test_data(self) -> None:
         self._record("reset")
         self.nodes.clear()

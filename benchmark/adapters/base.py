@@ -67,6 +67,14 @@ class BaseGraphAdapter(ABC):
         """Create, read and delete a throwaway node without touching the graph."""
 
     @abstractmethod
+    def ping(self) -> None:
+        """The cheapest possible round trip.
+
+        Measured as a workload so the reported query latencies can be compared
+        against the network floor rather than guessed at.
+        """
+
+    @abstractmethod
     def reset_test_data(self) -> None:
         """Delete the benchmark graph so a load starts from an empty database."""
 
