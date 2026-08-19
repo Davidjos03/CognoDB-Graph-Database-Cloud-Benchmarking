@@ -10,10 +10,10 @@ do not measure.
 
 **Headline finding so far:** on the CognoDB free tier, every read workload lands
 between 360 ms and 383 ms at p50 — and so does `RETURN 1`. A no-op round trip
-costs 362.0 ms from this client, so 95–99% of every measured query is network
+costs 363.5 ms from this client, so 94–99% of every measured query is network
 latency between the client (timezone UTC+7) and the instance (`us-east4`,
-Virginia). Subtract that floor and the database's own work is 1.6 ms for a
-1-hop traversal and 20.6 ms for a 3-hop traversal. Any benchmark that ignores
+Virginia). Subtract that floor and the database's own work is 1.1 ms for a
+1-hop traversal and 23.9 ms for a 3-hop traversal. Any benchmark that ignores
 the floor is measuring geography, so every latency below is reported twice: as
 observed, and with the round-trip floor subtracted.
 
@@ -23,7 +23,7 @@ observed, and with the round-trip floor subtracted.
 
 | Platform | Tier used | Measured | Notes |
 |---|---|---|---|
-| **CognoDB Cloud** | free `c0`, burstable 0.5 vCPU / 512 MB RAM / 1 GB disk, `us-east4` | yes — 3 complete runs | server reports `Neo4j/5.26.0` over `bolt+s://` |
+| **CognoDB Cloud** | free `c0`, burstable 0.5 vCPU / 512 MB RAM / 1 GB disk, `us-east4` | yes — 4 complete runs | server reports `Neo4j/5.26.0` over `bolt+s://` |
 | Neo4j 5.26 Community | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined, see [Limitations](#limitations-and-honest-caveats) |
 | Memgraph 3.12 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
 | FalkorDB 4.20 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
@@ -54,7 +54,11 @@ edited by hand.
 
 | Platform | Nodes | Relationships | Total load (s) | Nodes/s | Rels/s |
 |---|---|---|---|---|---|
-| cognodb | 7,115 | 103,689 | 73.8 | 1,718 | 1,488 |
+| cognodb | 7,115 | 103,689 | 77.2 | 1,727 | 1,420 |
+
+Across the three runs that loaded data, total load time was 73.8 s, 75.0 s and
+77.2 s (1,420–1,488 relationships/s), so the load rate is repeatable to within
+about 5%.
 
 Load method: batched parameterised Cypher (`UNWIND $rows AS row CREATE ...`) over
 the official Neo4j Bolt driver, 1,000 rows per batch, indexes created before the
@@ -65,24 +69,54 @@ protocol, and ArangoDB uses the AQL equivalent.
 ### Read workloads
 
 100 measured iterations after 20 warm-up iterations, per workload, per run.
-"Server" subtracts the measured `RETURN 1` round trip (362.0 ms) from p50, which
-approximates the time the database itself spent.
+"Server" subtracts this run's measured `RETURN 1` round trip (363.5 ms) from
+p50, which approximates the time the database itself spent. The last two columns
+give the run-to-run spread of each figure across all four runs.
 
-| Workload | p50 (ms) | p95 (ms) | p99 (ms) | Server (p50 − RTT) | Failures | p50 spread over 3 runs |
-|---|---|---|---|---|---|---|
-| network baseline (`RETURN 1`) | 362.0 | 379.9 | 386.3 | — | 0/100 | 0.6 ms |
-| 1-hop traversal | 363.6 | 376.9 | 380.1 | **1.6 ms** | 0/100 | 1.3 ms |
-| 2-hop traversal | 365.9 | 380.6 | 397.2 | **3.8 ms** | 0/100 | 3.4 ms |
-| 3-hop traversal | 382.6 | 1,428.4 | 1,781.8 | **20.6 ms** | 0/100 | 2.0 ms |
-| point lookup (indexed `node_id`) | 359.9 | 374.1 | 442.6 | **−2.1 ms** | 0/100 | 2.5 ms |
-| filtered lookup (indexed `group_id`) | 364.1 | 380.4 | 395.4 | **2.1 ms** | 0/100 | 9.2 ms |
-| aggregation (group-by count) | 373.4 | 389.8 | 401.2 | **11.4 ms** | 0/100 | 8.0 ms |
+| Workload | p50 (ms) | p95 (ms) | p99 (ms) | Server (p50 − RTT) | Failures | p50 spread | p95 spread |
+|---|---|---|---|---|---|---|---|
+| network baseline (`RETURN 1`) | 363.5 | 387.6 | 643.9 | — | 0/100 | 2.1 | 108.6 |
+| 1-hop traversal | 364.6 | 377.7 | 381.4 | **1.1 ms** | 0/100 | 2.4 | 1.9 |
+| 2-hop traversal | 368.8 | 614.8 | 690.2 | **5.3 ms** | 0/100 | 6.4 | 240.5 |
+| 3-hop traversal | 387.4 | 1,413.8 | 1,902.5 | **23.9 ms** | 0/100 | 6.8 | 97.3 |
+| point lookup (indexed `node_id`) | 365.7 | 378.4 | 517.9 | **2.2 ms** | 0/100 | 6.7 | 6.4 |
+| filtered lookup (indexed `group_id`) | 366.1 | 380.2 | 384.3 | **2.6 ms** | 0/100 | 9.2 | 28.5 |
+| aggregation (group-by count) | 375.3 | 394.1 | 400.1 | **11.9 ms** | 0/100 | 8.0 | 28.2 |
 
-A point lookup measuring 2.1 ms *faster* than `RETURN 1` is the honest way to
-report "indistinguishable from zero": both are a single round trip, and the
-difference is inside the run-to-run noise.
+Medians are stable — the widest p50 spread across four runs is 9.2 ms, about 2%.
+Tails are not: the p95 of the 2-hop traversal moved 240 ms between runs, and
+even the p95 of `RETURN 1` moved 109 ms. Any conclusion drawn from a single
+run's p95 on a shared free tier would be unreliable, which is why the spread is
+published beside the figure.
+
+A point lookup landing within ~2 ms of `RETURN 1` is the honest way to report
+"indistinguishable from zero": both are a single round trip, and the difference
+is inside the run-to-run noise. In an earlier run the point lookup measured
+2.1 ms *faster* than the no-op, which is the same statement in the other
+direction.
 
 ![Read workload latency](results/charts/read-latency.png)
+
+### Warm-up versus measured (first touch)
+
+Warm-up iterations are excluded from every percentile above, but they are timed
+and reported here rather than thrown away.
+
+| Workload | First warm-up call (ms) | Warm-up p50 (ms) | Measured p50 (ms) |
+|---|---|---|---|
+| network baseline | 381.4 | 369.7 | 363.5 |
+| 1-hop traversal | 366.1 | 365.2 | 364.6 |
+| 2-hop traversal | 372.2 | 366.0 | 368.8 |
+| 3-hop traversal | 422.2 | 387.8 | 387.4 |
+| point lookup | 366.3 | 366.3 | 365.7 |
+| filtered lookup | 367.3 | 364.5 | 366.1 |
+| aggregation | 391.1 | 380.7 | 375.3 |
+
+First contact costs almost nothing extra here: the largest gap is the 3-hop
+traversal at 422 ms versus a 387 ms warm median, i.e. ~35 ms of cache-filling on
+top of a 363 ms round trip. Warm-up matters far less than it would for a
+co-located client, because the network floor dwarfs it — another consequence of
+distance rather than a property of the database.
 
 ### Mixed workload: 90% reads, 10% writes
 
@@ -92,13 +126,14 @@ mutated. Writes are removed afterwards and the removal count is logged.
 
 | Clients | Sustained ops/s | p50 (ms) | p95 (ms) | Successes | Failures |
 |---|---|---|---|---|---|
-| 1 | 2.8 | 361.7 | 374.1 | 100 | 0 |
-| 10 | 27.2 | 363.8 | 379.6 | 1,000 | 0 |
-| 20 | 50.8 | 363.8 | 382.6 | 2,000 | 0 |
-| 40 | 109.1 | 363.3 | 378.8 | 4,000 | 0 |
+| 1 | 2.7 | 366.1 | 378.3 | 100 | 0 |
+| 10 | 25.1 | 368.9 | 622.7 | 1,000 | 0 |
+| 20 | 54.1 | 367.8 | 381.9 | 2,000 | 0 |
+| 40 | 105.5 | 367.5 | 382.8 | 4,000 | 0 |
 
 ![Mixed workload throughput](results/charts/mixed-throughput.png)
 
+Both sweeps that reached 40 clients agree: 105.5 and 109.1 ops/s.
 Throughput rises 39× from 1 to 40 clients while per-operation latency stays
 flat, which says the free instance was **not** the bottleneck at 40 clients —
 the client's round-trip time was. A `0.5 vCPU` instance that were saturated
@@ -124,25 +159,25 @@ after loading, so the load is confirmed even where the footprint is not.
 ## Analysis: what the numbers mean
 
 **The measurement is dominated by distance, not by the database.** The
-`network baseline` workload exists precisely to expose this. At 362.0 ms for
-`RETURN 1`, the client-to-instance round trip accounts for 95–99% of every read
-figure. Removing it leaves 1.6 ms for a 1-hop traversal, 3.8 ms for 2-hop and
-20.6 ms for 3-hop — plausible figures for a 104k-relationship graph that fits
+`network baseline` workload exists precisely to expose this. At 363.5 ms for
+`RETURN 1`, the client-to-instance round trip accounts for 94–99% of every read
+figure. Removing it leaves 1.1 ms for a 1-hop traversal, 5.3 ms for 2-hop and
+23.9 ms for 3-hop — plausible figures for a 104k-relationship graph that fits
 comfortably in page cache. Reporting only the raw p50 would tell a reader
 almost nothing about CognoDB and quite a lot about the flight time from Bangkok
 to Virginia.
 
 **Traversal cost grows with fan-out, as it should.** Server-side time scales
-1.6 → 3.8 → 20.6 ms across hop depths. Wiki-Vote is a dense voting network, so
+1.1 → 5.3 → 23.9 ms across hop depths. Wiki-Vote is a dense voting network, so
 a 3-hop neighbourhood reaches a large fraction of the graph; the ~5× jump from
 2-hop to 3-hop reflects that expansion, not a cliff in the engine.
 
 **The 3-hop tail is real and is the one place the tier shows through.** p50 is
-382.6 ms but p95 is 1,428 ms, p99 is 1,782 ms and the slowest of the 100
-iterations took 2,410 ms — a multi-second stall on a query that usually costs
-21 ms of server time. This is the signature of a burstable 0.5 vCPU instance:
+387.4 ms but p95 is 1,414 ms, p99 is 1,903 ms and the slowest of the 100
+iterations took 2,719 ms — a multi-second stall on a query that usually costs
+24 ms of server time. This is the signature of a burstable 0.5 vCPU instance:
 most 3-hop expansions fit inside the CPU allowance, and the occasional one does
-not. The mean for this workload is 532.7 ms, 150 ms above the median, dragged
+not. The mean for this workload is 545.9 ms, 158 ms above the median, dragged
 there by those few stalls: reporting the mean alone would have described the
 query as uniformly slow, when it is actually usually fast and occasionally
 stalled. That distinction only survives if percentiles are reported.
@@ -152,8 +187,8 @@ filtered lookup on `group_id` are inside round-trip noise of `RETURN 1`, with
 the `group_id` index turning a 50-way scan of 7,115 nodes into something
 unmeasurable from this distance.
 
-**Ingest is round-trip-bound too.** 103,689 relationships in 69.7 s over 104
-batches is 0.67 s per batch, of which ~0.36 s is the round trip. So roughly half
+**Ingest is round-trip-bound too.** 103,689 relationships in 73.0 s over 104
+batches is 0.70 s per batch, of which ~0.36 s is the round trip. So roughly half
 the load time is the network and half is the server matching two nodes and
 creating 1,000 relationships. The reported 1,488 rels/s is therefore a
 *client-observed* rate from this location, not a claim about the engine's write
@@ -161,7 +196,7 @@ capacity — a client in `us-east4` would roughly double it without the database
 changing at all.
 
 **Concurrency is where a distant client can still win.** Because each operation
-is mostly waiting, 40 clients overlap almost perfectly: 109 ops/s against 2.8
+is mostly waiting, 40 clients overlap almost perfectly: 105 ops/s against 2.7
 ops/s for one client. This is the most useful number in the set for anyone
 running a real workload from far away — latency is geography, but throughput is
 recoverable with concurrency.
@@ -298,7 +333,7 @@ gdbbench benchmark                   # load + every workload, one JSON per platf
 gdbbench benchmark --skip-load       # re-measure queries against data already loaded
 gdbbench report                      # summary CSVs, results/tables.md and the charts
 gdbbench --dry-run benchmark         # validate configuration, touch no database
-pytest                               # 133 tests, no network access required
+pytest                               # 163 tests, no network access required
 ```
 
 Every command accepts `--targets cognodb neo4j ...` to run a subset, `--verbose`
@@ -367,9 +402,10 @@ for DEBUG logging, and `--dry-run` to check configuration without connecting.
    are recorded as `not observable` rather than guessed. FalkorDB and ArangoDB
    do expose real figures, which the adapters read — a difference in
    observability, not in efficiency.
-9. **Three runs is a small sample.** The p50 spread across runs (0.6–9.2 ms) is
-   reported so the reader can judge stability, but three runs on one afternoon
-   cannot capture daily or weekly variance on a shared free tier.
+9. **Four runs is a small sample.** Medians repeat well (p50 spread 2.1–9.2 ms)
+   but tails do not (p95 spread up to 240 ms), and both are published beside the
+   figures. Four runs on one afternoon still cannot capture daily or weekly
+   variance on a shared free tier.
 
 ---
 
@@ -400,8 +436,9 @@ data/               dataset provenance and the generated CSVs (CSVs not committe
 results/raw/        one JSON file per platform per run — the evidence
 results/            generated summary.csv, ingest.csv, footprint.csv, tables.md
 results/charts/     generated PNGs
-tests/              133 tests: statistics, parsing, determinism, schema,
-                    concurrency, report generation — all offline
+tests/              163 tests: statistics, parsing, determinism, schema,
+                    concurrency, report generation, and stub-driver coverage of
+                    the FalkorDB and ArangoDB translations — all offline
 ```
 
 ### Adding a platform

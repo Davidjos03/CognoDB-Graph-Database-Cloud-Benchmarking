@@ -4,28 +4,40 @@
 
 | Platform | Nodes | Relationships | Total load (s) | Nodes/s | Rels/s | Measured (UTC) |
 | --- | --- | --- | --- | --- | --- | --- |
-| cognodb | 7,115 | 103,689 | 73.8 | 1,718 | 1,488 | 2026-08-19T12:59:17+00:00 |
+| cognodb | 7,115 | 103,689 | 77.2 | 1,727 | 1,420 | 2026-08-19T16:00:50+00:00 |
 
 ## Read workloads (p50 / p95, ms)
 
 | Platform | Workload | p50 | p95 | p99 | Failures | Runs | p50 spread |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| cognodb | network baseline | 362.0 | 379.9 | 386.3 | 0/100 | 3 | 0.6 |
-| cognodb | 1-hop traversal | 363.6 | 376.9 | 380.1 | 0/100 | 3 | 1.3 |
-| cognodb | 2-hop traversal | 365.9 | 380.6 | 397.2 | 0/100 | 3 | 3.4 |
-| cognodb | 3-hop traversal | 382.6 | 1,428.4 | 1,781.8 | 0/100 | 3 | 2.0 |
-| cognodb | point lookup | 359.9 | 374.1 | 442.6 | 0/100 | 3 | 2.5 |
-| cognodb | filtered lookup | 364.1 | 380.4 | 395.4 | 0/100 | 3 | 9.2 |
-| cognodb | aggregation | 373.4 | 389.8 | 401.2 | 0/100 | 3 | 8.0 |
+| cognodb | network baseline | 363.5 | 387.6 | 643.9 | 0/100 | 4 | 2.1 |
+| cognodb | 1-hop traversal | 364.6 | 377.7 | 381.4 | 0/100 | 4 | 2.4 |
+| cognodb | 2-hop traversal | 368.8 | 614.8 | 690.2 | 0/100 | 4 | 6.4 |
+| cognodb | 3-hop traversal | 387.4 | 1,413.8 | 1,902.5 | 0/100 | 4 | 6.8 |
+| cognodb | point lookup | 365.7 | 378.4 | 517.9 | 0/100 | 4 | 6.7 |
+| cognodb | filtered lookup | 366.1 | 380.2 | 384.3 | 0/100 | 4 | 9.2 |
+| cognodb | aggregation | 375.3 | 394.1 | 400.1 | 0/100 | 4 | 8.0 |
+
+## Warm-up versus measured (first touch, ms)
+
+| Platform | Workload | First warm-up call | Warm-up p50 | Measured p50 |
+| --- | --- | --- | --- | --- |
+| cognodb | network baseline | 381.4 | 369.7 | 363.5 |
+| cognodb | 1-hop traversal | 366.1 | 365.2 | 364.6 |
+| cognodb | 2-hop traversal | 372.2 | 366.0 | 368.8 |
+| cognodb | 3-hop traversal | 422.2 | 387.8 | 387.4 |
+| cognodb | point lookup | 366.3 | 366.3 | 365.7 |
+| cognodb | filtered lookup | 367.3 | 364.5 | 366.1 |
+| cognodb | aggregation | 391.1 | 380.7 | 375.3 |
 
 ## Mixed read/write sweep
 
 | Platform | Clients | Ops/s | p50 | p95 | Successes | Failures |
 | --- | --- | --- | --- | --- | --- | --- |
-| cognodb | 1 | 2.8 | 361.7 | 374.1 | 100 | 0 |
-| cognodb | 10 | 27.2 | 363.8 | 379.6 | 1000 | 0 |
-| cognodb | 20 | 50.8 | 363.8 | 382.6 | 2000 | 0 |
-| cognodb | 40 | 109.1 | 363.3 | 378.8 | 4000 | 0 |
+| cognodb | 1 | 2.7 | 366.1 | 378.3 | 100 | 0 |
+| cognodb | 10 | 25.1 | 368.9 | 622.7 | 1000 | 0 |
+| cognodb | 20 | 54.1 | 367.8 | 381.9 | 2000 | 0 |
+| cognodb | 40 | 105.5 | 367.5 | 382.8 | 4000 | 0 |
 
 ## Footprint
 
@@ -35,4 +47,4 @@
 
 ## Caveats recorded during the runs
 
-- **cognodb**: load phase skipped: ingest metrics come from a previous run of this platform
+- none recorded

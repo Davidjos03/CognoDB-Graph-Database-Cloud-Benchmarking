@@ -1,12 +1,12 @@
-platform,category,workload,concurrency,attempted,successes,failures,p50_ms,p95_ms,p99_ms,ops_per_second,runs,p50_spread_ms
-cognodb,read,network baseline,1,100,100,0,362.016,379.94,386.298,2.75,3,0.643
-cognodb,read,1-hop traversal,1,100,100,0,363.588,376.946,380.128,2.75,3,1.334
-cognodb,read,2-hop traversal,1,100,100,0,365.863,380.635,397.219,2.72,3,3.406
-cognodb,read,3-hop traversal,1,100,100,0,382.6,1428.382,1781.787,1.88,3,2.001
-cognodb,read,point lookup,1,100,100,0,359.91,374.051,442.626,2.74,3,2.484
-cognodb,read,filtered lookup,1,100,100,0,364.116,380.446,395.387,2.68,3,9.214
-cognodb,read,aggregation,1,100,100,0,373.438,389.803,401.202,2.66,3,7.962
-cognodb,mixed,mixed read/write,1,100,100,0,361.658,374.13,382.493,2.76,3,0.797
-cognodb,mixed,mixed read/write,10,1000,1000,0,363.816,379.595,436.069,27.21,3,0.606
-cognodb,mixed,mixed read/write,20,2000,2000,0,363.84,382.577,627.565,50.76,3,1.287
-cognodb,mixed,mixed read/write,40,4000,4000,0,363.303,378.752,390.492,109.12,3,2.455
+platform,category,workload,concurrency,attempted,successes,failures,p50_ms,p95_ms,p99_ms,ops_per_second,warmup_first_ms,warmup_p50_ms,runs,p50_spread_ms
+cognodb,read,network baseline,1,100,100,0,363.488,387.623,643.944,2.67,381.376,369.738,4,2.08
+cognodb,read,1-hop traversal,1,100,100,0,364.609,377.673,381.391,2.74,366.079,365.236,4,2.355
+cognodb,read,2-hop traversal,1,100,100,0,368.811,614.804,690.247,2.56,372.226,366.007,4,6.354
+cognodb,read,3-hop traversal,1,100,100,0,387.378,1413.832,1902.471,1.83,422.157,387.803,4,6.779
+cognodb,read,point lookup,1,100,100,0,365.668,378.355,517.942,2.7,366.34,366.34,4,6.679
+cognodb,read,filtered lookup,1,100,100,0,366.051,380.216,384.312,2.72,367.255,364.549,4,9.214
+cognodb,read,aggregation,1,100,100,0,375.347,394.059,400.142,2.65,391.116,380.731,4,7.962
+cognodb,mixed,mixed read/write,1,100,100,0,366.054,378.312,389.778,2.72,,,4,4.396
+cognodb,mixed,mixed read/write,10,1000,1000,0,368.914,622.675,755.148,25.06,,,4,5.098
+cognodb,mixed,mixed read/write,20,2000,2000,0,367.796,381.894,389.643,54.07,,,4,3.956
+cognodb,mixed,mixed read/write,40,4000,4000,0,367.479,382.766,407.217,105.55,,,4,4.176

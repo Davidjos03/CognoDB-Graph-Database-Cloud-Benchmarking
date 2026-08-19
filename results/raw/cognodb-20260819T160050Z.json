@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "platform": "cognodb",
+    "platform_specs": "free c0, burstable 0.5 vCPU / 512 MB RAM (console) / 1 GB disk, region us-east4",
+    "uri": "bolt+s://***",
+    "started_at": "2026-08-19T16:00:50+00:00",
+    "git_commit": "035dbbfd189e29f2b1313d9e2d85b8eec9dc8f43",
+    "python_version": "3.12.10",
+    "operating_system": "Windows 11",
+    "seed": 42,
+    "warmup_iterations": 20,
+    "measured_iterations": 100,
+    "concurrency_levels": [
+      1,
+      10,
+      20,
+      40
+    ],
+    "read_ratio": 0.9,
+    "batch_size": 1000,
+    "dataset": {
+      "name": "SNAP wiki-Vote",
+      "source_url": "https://snap.stanford.edu/data/wiki-Vote.txt.gz",
+      "archive_sha256": "7d3e53626e14b8b09fb3b396bece9d481ad606bd64ceab066349ff57d4ada7fc",
+      "node_count": 7115,
+      "relationship_count": 103689,
+      "duplicate_relationships_skipped": 0,
+      "node_label": "User",
+      "relationship_type": "VOTED_FOR",
+      "group_count": 50
+    }
+  },
+  "ingest": {
+    "node_count": 7115,
+    "relationship_count": 103689,
+    "node_load_s": 4.12,
+    "relationship_load_s": 73.033,
+    "total_load_s": 77.153,
+    "nodes_per_second": 1727.08,
+    "relationships_per_second": 1419.75
+  },
+  "workloads": [
+    {
+      "workload": "network baseline",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 37.5136,
+      "ops_per_second": 2.67,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 381.376,
+        "p50_ms": 369.738,
+        "max_ms": 389.779
+      },
+      "p50_ms": 363.488,
+      "p95_ms": 387.623,
+      "p99_ms": 643.944,
+      "min_ms": 349.2,
+      "max_ms": 862.986,
+      "mean_ms": 375.134
+    },
+    {
+      "workload": "1-hop traversal",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 36.4718,
+      "ops_per_second": 2.74,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 366.079,
+        "p50_ms": 365.236,
+        "max_ms": 388.058
+      },
+      "p50_ms": 364.609,
+      "p95_ms": 377.673,
+      "p99_ms": 381.391,
+      "min_ms": 347.45,
+      "max_ms": 385.716,
+      "mean_ms": 364.716
+    },
+    {
+      "workload": "2-hop traversal",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 39.0855,
+      "ops_per_second": 2.56,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 372.226,
+        "p50_ms": 366.007,
+        "max_ms": 384.592
+      },
+      "p50_ms": 368.811,
+      "p95_ms": 614.804,
+      "p99_ms": 690.247,
+      "min_ms": 347.829,
+      "max_ms": 953.537,
+      "mean_ms": 390.854
+    },
+    {
+      "workload": "3-hop traversal",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 54.59,
+      "ops_per_second": 1.83,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 422.157,
+        "p50_ms": 387.803,
+        "max_ms": 1401.154
+      },
+      "p50_ms": 387.378,
+      "p95_ms": 1413.832,
+      "p99_ms": 1902.471,
+      "min_ms": 352.515,
+      "max_ms": 2718.477,
+      "mean_ms": 545.899
+    },
+    {
+      "workload": "point lookup",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 37.0584,
+      "ops_per_second": 2.7,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 366.34,
+        "p50_ms": 366.34,
+        "max_ms": 380.49
+      },
+      "p50_ms": 365.668,
+      "p95_ms": 378.355,
+      "p99_ms": 517.942,
+      "min_ms": 349.937,
+      "max_ms": 653.836,
+      "mean_ms": 370.583
+    },
+    {
+      "workload": "filtered lookup",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 36.7466,
+      "ops_per_second": 2.72,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 367.255,
+        "p50_ms": 364.549,
+        "max_ms": 376.637
+      },
+      "p50_ms": 366.051,
+      "p95_ms": 380.216,
+      "p99_ms": 384.312,
+      "min_ms": 349.978,
+      "max_ms": 486.234,
+      "mean_ms": 367.465
+    },
+    {
+      "workload": "aggregation",
+      "concurrency": 1,
+      "warmup_iterations": 20,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 37.7287,
+      "ops_per_second": 2.65,
+      "failure_samples": [],
+      "notes": [],
+      "warmup": {
+        "first_ms": 391.116,
+        "p50_ms": 380.731,
+        "max_ms": 406.414
+      },
+      "p50_ms": 375.347,
+      "p95_ms": 394.059,
+      "p99_ms": 400.142,
+      "min_ms": 360.18,
+      "max_ms": 472.711,
+      "mean_ms": 377.285
+    }
+  ],
+  "mixed": [
+    {
+      "workload": "mixed read/write",
+      "concurrency": 1,
+      "warmup_iterations": 0,
+      "attempted": 100,
+      "successes": 100,
+      "failures": 0,
+      "wall_time_s": 36.7022,
+      "ops_per_second": 2.72,
+      "failure_samples": [],
+      "notes": [
+        "1 client(s), 90% reads"
+      ],
+      "p50_ms": 366.054,
+      "p95_ms": 378.312,
+      "p99_ms": 389.778,
+      "min_ms": 349.702,
+      "max_ms": 442.305,
+      "mean_ms": 367.019
+    },
+    {
+      "workload": "mixed read/write",
+      "concurrency": 10,
+      "warmup_iterations": 0,
+      "attempted": 1000,
+      "successes": 1000,
+      "failures": 0,
+      "wall_time_s": 39.9095,
+      "ops_per_second": 25.06,
+      "failure_samples": [],
+      "notes": [
+        "10 client(s), 90% reads"
+      ],
+      "p50_ms": 368.914,
+      "p95_ms": 622.675,
+      "p99_ms": 755.148,
+      "min_ms": 348.73,
+      "max_ms": 874.121,
+      "mean_ms": 398.803
+    },
+    {
+      "workload": "mixed read/write",
+      "concurrency": 20,
+      "warmup_iterations": 0,
+      "attempted": 2000,
+      "successes": 2000,
+      "failures": 0,
+      "wall_time_s": 36.9862,
+      "ops_per_second": 54.07,
+      "failure_samples": [],
+      "notes": [
+        "20 client(s), 90% reads"
+      ],
+      "p50_ms": 367.796,
+      "p95_ms": 381.894,
+      "p99_ms": 389.643,
+      "min_ms": 346.018,
+      "max_ms": 398.718,
+      "mean_ms": 368.228
+    },
+    {
+      "workload": "mixed read/write",
+      "concurrency": 40,
+      "warmup_iterations": 0,
+      "attempted": 4000,
+      "successes": 4000,
+      "failures": 0,
+      "wall_time_s": 37.898,
+      "ops_per_second": 105.55,
+      "failure_samples": [],
+      "notes": [
+        "40 client(s), 90% reads"
+      ],
+      "p50_ms": 367.479,
+      "p95_ms": 382.766,
+      "p99_ms": 407.217,
+      "min_ms": 346.243,
+      "max_ms": 1468.018,
+      "mean_ms": 369.645
+    }
+  ],
+  "footprint": {
+    "configured_specs": "free c0, burstable 0.5 vCPU / 512 MB RAM (console) / 1 GB disk, region us-east4",
+    "server": "Neo4j/5.26.0",
+    "indexes": [
+      "User(group_id)",
+      "User(node_id)"
+    ],
+    "loaded_nodes": 7115,
+    "loaded_relationships": 103689,
+    "stored_data_size": "not observable"
+  },
+  "caveats": []
+}
