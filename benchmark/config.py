@@ -70,6 +70,10 @@ class Settings:
     def raw_results_dir(self) -> Path:
         return self.results_dir / "raw"
 
+    @property
+    def charts_dir(self) -> Path:
+        return self.results_dir / "charts"
+
 
 def load_env() -> None:
     """Load .env from the repository root if present."""

@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from benchmark import __version__, adapters, config, dataset, loader, results, runner
+from benchmark import __version__, adapters, config, dataset, loader, report, results, runner
 from benchmark.log import setup_logging
 
 log = logging.getLogger("benchmark")
@@ -69,6 +69,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="measure the data already in the database instead of reloading it",
     )
     run.set_defaults(handler=cmd_benchmark)
+
+    report_command = subparsers.add_parser(
+        "report", help="build the summary CSVs, README tables and charts from results/raw"
+    )
+    report_command.add_argument(
+        "--no-charts", action="store_true", help="write tables only, skip the PNG charts"
+    )
+    report_command.set_defaults(handler=cmd_report)
+
+    run_all = subparsers.add_parser(
+        "run-all",
+        help="download the dataset if needed, benchmark every configured platform, then report",
+    )
+    run_all.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to benchmark")
+    run_all.set_defaults(handler=cmd_run_all)
 
     return parser
 
@@ -266,6 +281,51 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    """Derive every table and chart from the raw result files."""
+    settings = config.load_settings()
+    if args.dry_run:
+        log.info("would summarise %s into %s", settings.raw_results_dir, settings.results_dir)
+        return 0
+
+    summary = report.summarise(results.load_all(settings.raw_results_dir))
+    log.info("summarising %d platform(s): %s", len(summary.platforms), ", ".join(summary.platforms))
+    report.write_csvs(summary, settings.results_dir)
+    report.write_markdown(summary, settings.results_dir)
+
+    if args.no_charts:
+        log.info("charts skipped")
+        return 0
+
+    from benchmark import charts  # imported late: matplotlib is slow to load
+
+    charts.render(summary, settings.charts_dir)
+    return 0
+
+
+def cmd_run_all(args: argparse.Namespace) -> int:
+    """One command: prepare data, benchmark everything configured, publish tables."""
+    settings = config.load_settings()
+    try:
+        dataset.read_metadata(settings.data_dir)
+    except dataset.DatasetError:
+        log.info("dataset not prepared yet; downloading it first")
+        exit_code = cmd_download_data(argparse.Namespace(dry_run=args.dry_run, force=False))
+        if exit_code:
+            return exit_code
+
+    exit_code = cmd_benchmark(
+        argparse.Namespace(dry_run=args.dry_run, targets=args.targets, skip_load=False)
+    )
+    if exit_code:
+        # Report anyway: a partial run is still worth tabulating, and the
+        # failure is already recorded in the result files.
+        log.warning("benchmark reported failures; reporting on whatever completed")
+
+    report_code = cmd_report(argparse.Namespace(dry_run=args.dry_run, no_charts=False))
+    return exit_code or report_code
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     setup_logging(args.verbose)
@@ -282,6 +342,9 @@ def main(argv: list[str] | None = None) -> int:
     except adapters.AdapterError as exc:
         log.error("adapter error: %s", exc)
         return 4
+    except report.ReportError as exc:
+        log.error("report error: %s", exc)
+        return 5
 
 
 if __name__ == "__main__":
