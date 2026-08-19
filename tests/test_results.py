@@ -116,5 +116,6 @@ def test_save_and_load_round_trip(tmp_path, result):
 
     assert path.parent == tmp_path
     assert path.name.startswith("cognodb-")
+    assert path.name.endswith("Z.json")  # UTC stamp, safe on every filesystem
     assert results.load(path) == result.to_dict()
     assert results.load_all(tmp_path) == [result.to_dict()]

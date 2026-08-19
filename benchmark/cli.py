@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from benchmark import __version__, adapters, config, dataset
+from benchmark import __version__, adapters, config, dataset, loader, results
 from benchmark.log import setup_logging
 
 log = logging.getLogger("benchmark")
@@ -52,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     smoke.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to test")
     smoke.set_defaults(handler=cmd_smoke_test)
+
+    load = subparsers.add_parser(
+        "load", help="load the shared dataset into each platform and measure ingest throughput"
+    )
+    load.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to load")
+    load.set_defaults(handler=cmd_load)
 
     return parser
 
@@ -146,6 +152,67 @@ def cmd_smoke_test(args: argparse.Namespace) -> int:
         log.error("smoke test failed for: %s", ", ".join(failed))
         return 4
     return 0
+
+
+def cmd_load(args: argparse.Namespace) -> int:
+    """Bulk load every configured platform and record the ingest metrics."""
+    settings = config.load_settings()
+    targets = config.load_targets(args.targets)
+    if not targets:
+        log.error("no platform is configured; nothing to load")
+        return 1
+
+    data = dataset.load_csv(settings.data_dir)
+    dataset.validate(data)
+    dataset_metadata = dataset.read_metadata(settings.data_dir)
+
+    if args.dry_run:
+        for target in targets:
+            log.info(
+                "would load %d nodes and %d relationships into %s",
+                data.node_count,
+                data.relationship_count,
+                target.name,
+            )
+        return 0
+
+    failed: list[str] = []
+    for target in targets:
+        try:
+            _load_one(target, settings, data, dataset_metadata)
+        except adapters.AdapterError as exc:
+            log.error("%s", exc)
+            failed.append(target.name)
+
+    if failed:
+        log.error("load failed for: %s", ", ".join(failed))
+        return 4
+    return 0
+
+
+def _load_one(
+    target: config.Target,
+    settings: config.Settings,
+    data: dataset.Dataset,
+    dataset_metadata: dict,
+) -> None:
+    result = results.PlatformResult(
+        metadata=results.build_metadata(target, settings, dataset_metadata)
+    )
+    adapter = adapters.create(target, settings)
+    with adapter:
+        report = loader.load_into(adapter, data)
+        result.record_footprint(adapter.footprint())
+
+    result.record_ingest(
+        node_count=report.node_count,
+        relationship_count=report.relationship_count,
+        nodes_s=report.node_seconds,
+        relationships_s=report.relationship_seconds,
+    )
+    for caveat in adapter.caveats:
+        result.add_caveat(caveat)
+    result.save(settings.raw_results_dir)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -132,7 +132,7 @@ class PlatformResult:
 
     def save(self, raw_results_dir: Path) -> Path:
         raw_results_dir.mkdir(parents=True, exist_ok=True)
-        stamp = self.metadata.started_at.replace(":", "").replace("-", "")
+        stamp = datetime.fromisoformat(self.metadata.started_at).strftime("%Y%m%dT%H%M%SZ")
         path = raw_results_dir / f"{self.metadata.platform}-{stamp}.json"
         path.write_text(json.dumps(self.to_dict(), indent=2) + "\n", encoding="utf-8")
         log.info("wrote %s", path)

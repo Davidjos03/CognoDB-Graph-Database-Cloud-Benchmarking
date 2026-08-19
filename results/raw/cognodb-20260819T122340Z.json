@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "platform": "cognodb",
+    "platform_specs": "free c0, burstable 0.5 vCPU / 512 MB RAM (console) / 1 GB disk, region us-east4",
+    "uri": "bolt+s://***",
+    "started_at": "2026-08-19T12:23:40+00:00",
+    "git_commit": "5f1ae67678e7d2094f510eb5390b70fc405aff39",
+    "python_version": "3.12.10",
+    "operating_system": "Windows 11",
+    "seed": 42,
+    "warmup_iterations": 20,
+    "measured_iterations": 100,
+    "concurrency_levels": [
+      1,
+      10,
+      40
+    ],
+    "read_ratio": 0.9,
+    "batch_size": 1000,
+    "dataset": {
+      "name": "SNAP wiki-Vote",
+      "source_url": "https://snap.stanford.edu/data/wiki-Vote.txt.gz",
+      "archive_sha256": "7d3e53626e14b8b09fb3b396bece9d481ad606bd64ceab066349ff57d4ada7fc",
+      "node_count": 7115,
+      "relationship_count": 103689,
+      "duplicate_relationships_skipped": 0,
+      "node_label": "User",
+      "relationship_type": "VOTED_FOR",
+      "group_count": 50
+    }
+  },
+  "ingest": {
+    "node_count": 7115,
+    "relationship_count": 103689,
+    "node_load_s": 6.054,
+    "relationship_load_s": 81.009,
+    "total_load_s": 87.063,
+    "nodes_per_second": 1175.29,
+    "relationships_per_second": 1279.96
+  },
+  "workloads": [],
+  "mixed": [],
+  "footprint": {
+    "configured_specs": "free c0, burstable 0.5 vCPU / 512 MB RAM (console) / 1 GB disk, region us-east4",
+    "server": "Neo4j/5.26.0",
+    "indexes": [
+      "User(group_id)",
+      "User(node_id)"
+    ],
+    "loaded_nodes": 7115,
+    "loaded_relationships": 103689,
+    "stored_data_size": "not observable"
+  },
+  "caveats": []
+}
