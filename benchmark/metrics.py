@@ -73,9 +73,12 @@ class Measurement:
 
     @property
     def ops_per_second(self) -> float:
-        if self.wall_time_s <= 0:
-            return 0.0
-        return self.successes * self.concurrency / self.wall_time_s
+        """Sustained throughput: successful operations divided by elapsed time.
+
+        For a concurrent run ``successes`` already totals every client, so the
+        client count must not be multiplied in again.
+        """
+        return throughput(self.successes, self.wall_time_s)
 
     def to_dict(self) -> dict:
         summary = {
@@ -150,6 +153,47 @@ def measure(
         attempted=iterations,
         warmup_iterations=warmup,
         latencies_ms=tuple(latencies_ms),
+        failure_count=failure_count,
+        failure_samples=tuple(failures),
+        wall_time_s=wall_time_s,
+        concurrency=concurrency,
+        notes=tuple(notes),
+    )
+
+
+def combine(
+    name: str,
+    parts: Sequence[Measurement],
+    *,
+    concurrency: int,
+    wall_time_s: float,
+    notes: Sequence[str] = (),
+) -> Measurement:
+    """Merge per-client measurements into one result for a concurrent run.
+
+    ``wall_time_s`` is the elapsed time of the whole parallel window, not the
+    sum of the clients' own timings, so throughput reflects real concurrency.
+    """
+    latencies: list[float] = []
+    failures: list[Failure] = []
+    attempted = 0
+    failure_count = 0
+    warmup = 0
+
+    for part in parts:
+        latencies.extend(part.latencies_ms)
+        attempted += part.attempted
+        failure_count += part.failure_count
+        warmup = max(warmup, part.warmup_iterations)
+        for failure in part.failure_samples:
+            if len(failures) < MAX_FAILURE_SAMPLES:
+                failures.append(failure)
+
+    return Measurement(
+        name=name,
+        attempted=attempted,
+        warmup_iterations=warmup,
+        latencies_ms=tuple(latencies),
         failure_count=failure_count,
         failure_samples=tuple(failures),
         wall_time_s=wall_time_s,

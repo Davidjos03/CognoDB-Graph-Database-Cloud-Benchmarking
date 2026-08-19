@@ -46,6 +46,17 @@ def test_run_loads_before_measuring(fake_registry):
     assert calls.index("load_relationships") < calls.index("point_lookup")
 
 
+def test_run_sweeps_the_mixed_workload_and_cleans_up_its_writes(fake_registry):
+    payload = run().to_dict()
+
+    assert [level["concurrency"] for level in payload["mixed"]] == list(
+        SETTINGS.concurrency_levels
+    )
+    assert all(level["workload"] == "mixed read/write" for level in payload["mixed"])
+    assert "cleanup_writes" in fake_registry.calls
+    assert fake_registry.writes == []  # nothing left behind in the graph
+
+
 def test_run_records_ingest_and_footprint(fake_registry):
     payload = run().to_dict()
 

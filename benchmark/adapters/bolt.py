@@ -12,6 +12,7 @@ passed as a parameter.
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from typing import Iterable
 
@@ -28,6 +29,9 @@ log = logging.getLogger(__name__)
 # is never modified and can be cleaned up in one statement.
 WRITE_RELATIONSHIP = "BENCH_WRITE"
 SMOKE_LABEL = "BenchSmoke"
+
+CONNECT_ATTEMPTS = 3
+CONNECT_BACKOFF_S = 2.0
 
 CREATE_INDEXES = (
     f"CREATE INDEX user_node_id IF NOT EXISTS FOR (u:{NODE_LABEL}) ON (u.node_id)",
@@ -119,23 +123,60 @@ class BoltAdapter(BaseGraphAdapter):
         self._server_agent = NOT_OBSERVABLE
 
     def connect(self) -> None:
-        timeout = self.settings.query_timeout_s
-        try:
-            self._driver = GraphDatabase.driver(
-                self.target.uri,
-                auth=(self.target.username, self.target.password),
-                connection_timeout=timeout,
-                connection_acquisition_timeout=timeout,
-                max_transaction_retry_time=timeout,
+        """Open a session, retrying a few times.
+
+        Free-tier endpoints occasionally refuse a connection; a transient
+        failure should not discard a long run, but it is recorded as a caveat
+        rather than hidden.
+        """
+        last_error = ""
+        for attempt in range(1, CONNECT_ATTEMPTS + 1):
+            try:
+                self._open()
+            except Exception as exc:
+                last_error = describe_error(exc)
+                self.close()
+                # Retries are noisy when many clients connect at once; only the
+                # final failure is worth a warning.
+                logger = log.warning if attempt == CONNECT_ATTEMPTS else log.debug
+                logger(
+                    "%s: connection attempt %d of %d failed: %s",
+                    self.name,
+                    attempt,
+                    CONNECT_ATTEMPTS,
+                    last_error,
+                )
+                if attempt < CONNECT_ATTEMPTS:
+                    time.sleep(CONNECT_BACKOFF_S * attempt)
+                continue
+
+            if attempt > 1:
+                self.add_caveat(f"connection succeeded only on attempt {attempt}: {last_error}")
+            log.info(
+                "%s: connected to %s, server %s",
+                self.name,
+                self.target.safe_uri,
+                self._server_agent,
             )
-            self._driver.verify_connectivity()
-            self._session = self._driver.session(database=self.target.database or None)
-            summary = self._session.run(PING).consume()
-            self._server_agent = summary.server.agent or NOT_OBSERVABLE
-        except Exception as exc:
-            self.close()
-            raise AdapterError(f"{self.name}: cannot connect: {describe_error(exc)}") from exc
-        log.info("%s: connected to %s, server %s", self.name, self.target.safe_uri, self._server_agent)
+            return
+
+        raise AdapterError(
+            f"{self.name}: cannot connect after {CONNECT_ATTEMPTS} attempts: {last_error}"
+        )
+
+    def _open(self) -> None:
+        timeout = self.settings.query_timeout_s
+        self._driver = GraphDatabase.driver(
+            self.target.uri,
+            auth=(self.target.username, self.target.password),
+            connection_timeout=timeout,
+            connection_acquisition_timeout=timeout,
+            max_transaction_retry_time=timeout,
+        )
+        self._driver.verify_connectivity()
+        self._session = self._driver.session(database=self.target.database or None)
+        summary = self._session.run(PING).consume()
+        self._server_agent = summary.server.agent or NOT_OBSERVABLE
 
     def close(self) -> None:
         for resource in (self._session, self._driver):

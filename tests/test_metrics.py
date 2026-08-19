@@ -114,7 +114,7 @@ def test_measurement_dict_reports_percentiles_and_throughput():
     assert summary["p50_ms"] == 2.0
     assert summary["p95_ms"] == 4.0
     assert summary["mean_ms"] == 2.5
-    assert summary["ops_per_second"] == 20.0  # 4 successes x 10 clients / 2 s
+    assert summary["ops_per_second"] == 2.0  # 4 successful operations in 2 seconds
 
 
 def test_stopwatch_measures_elapsed_time():

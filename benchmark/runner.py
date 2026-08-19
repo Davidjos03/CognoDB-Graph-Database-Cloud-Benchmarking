@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from benchmark import adapters, loader, metrics, results, workloads
+from benchmark import adapters, loader, metrics, mixed, results, workloads
 from benchmark.config import Settings, Target
 from benchmark.dataset import Dataset
 
@@ -48,6 +48,19 @@ def run_platform(
             )
             result.record_workload(measurement)
             _log_measurement(target.name, measurement)
+
+        for measurement in mixed.run_sweep(
+            settings, data, lambda: adapters.create(target, settings)
+        ):
+            result.record_mixed(measurement)
+            if not measurement.successes:
+                result.add_caveat(
+                    f"mixed workload at {measurement.concurrency} clients: no operation succeeded "
+                    "(see the failure samples in this result)"
+                )
+
+        removed = adapter.cleanup_writes()
+        log.info("%s: removed %d benchmark write relationships", target.name, removed)
 
         result.record_footprint(adapter.footprint())
 
