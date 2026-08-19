@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from benchmark import __version__, config
+from benchmark import __version__, config, dataset
 from benchmark.log import setup_logging
 
 log = logging.getLogger("benchmark")
@@ -37,6 +37,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate.set_defaults(handler=cmd_validate)
 
+    download = subparsers.add_parser(
+        "download-data",
+        help=f"download {dataset.DATASET_NAME} and export the shared nodes/edges CSV files",
+    )
+    download.add_argument(
+        "--force", action="store_true", help="re-download even if the archive is cached"
+    )
+    download.set_defaults(handler=cmd_download_data)
+
     return parser
 
 
@@ -63,6 +72,42 @@ def cmd_validate(args: argparse.Namespace) -> int:
         log.info("configured: %s specs=%s", target.summary(), target.specs)
     for name in config.unconfigured_platforms():
         log.warning("not configured: %s (set %s_URI to include it)", name, name.upper())
+
+    try:
+        metadata = dataset.read_metadata(settings.data_dir)
+        log.info(
+            "dataset ready: %s, %d nodes, %d relationships",
+            metadata["name"],
+            metadata["node_count"],
+            metadata["relationship_count"],
+        )
+    except dataset.DatasetError as exc:
+        log.warning("dataset not prepared: %s", exc)
+    return 0
+
+
+def cmd_download_data(args: argparse.Namespace) -> int:
+    """Download the source dataset and export the CSV files used by every platform."""
+    settings = config.load_settings()
+    if args.dry_run:
+        log.info("would download %s into %s", dataset.SOURCE_URL, settings.data_dir / "raw")
+        return 0
+
+    archive = dataset.download_archive(settings.data_dir, force=args.force)
+    parsed = dataset.read_archive(archive)
+    dataset.validate(parsed)
+
+    nodes_csv, edges_csv = dataset.export_csv(parsed, settings.data_dir)
+    metadata_path = dataset.write_metadata(parsed, archive, settings.data_dir)
+
+    log.info(
+        "%s: %d nodes, %d relationships (%d duplicate edges skipped)",
+        dataset.DATASET_NAME,
+        parsed.node_count,
+        parsed.relationship_count,
+        parsed.duplicate_edges,
+    )
+    log.info("wrote %s, %s and %s", nodes_csv.name, edges_csv.name, metadata_path.name)
     return 0
 
 
@@ -76,6 +121,9 @@ def main(argv: list[str] | None = None) -> int:
     except config.ConfigError as exc:
         log.error("configuration error: %s", exc)
         return 2
+    except dataset.DatasetError as exc:
+        log.error("dataset error: %s", exc)
+        return 3
 
 
 if __name__ == "__main__":

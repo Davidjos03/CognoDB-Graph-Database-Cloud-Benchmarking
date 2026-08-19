@@ -1,0 +1,11 @@
+{
+  "name": "SNAP wiki-Vote",
+  "source_url": "https://snap.stanford.edu/data/wiki-Vote.txt.gz",
+  "archive_sha256": "7d3e53626e14b8b09fb3b396bece9d481ad606bd64ceab066349ff57d4ada7fc",
+  "node_count": 7115,
+  "relationship_count": 103689,
+  "duplicate_relationships_skipped": 0,
+  "node_label": "User",
+  "relationship_type": "VOTED_FOR",
+  "group_count": 50
+}
