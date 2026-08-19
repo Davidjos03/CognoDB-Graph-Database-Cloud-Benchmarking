@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from benchmark import __version__, config, dataset
+from benchmark import __version__, adapters, config, dataset
 from benchmark.log import setup_logging
 
 log = logging.getLogger("benchmark")
@@ -45,6 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--force", action="store_true", help="re-download even if the archive is cached"
     )
     download.set_defaults(handler=cmd_download_data)
+
+    smoke = subparsers.add_parser(
+        "smoke-test",
+        help="connect to each configured platform and verify create, match and delete",
+    )
+    smoke.add_argument("--targets", nargs="+", metavar="PLATFORM", help="platforms to test")
+    smoke.set_defaults(handler=cmd_smoke_test)
 
     return parser
 
@@ -111,6 +118,36 @@ def cmd_download_data(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_smoke_test(args: argparse.Namespace) -> int:
+    """Prove connectivity and write access on every configured platform."""
+    settings = config.load_settings()
+    targets = config.load_targets(args.targets)
+    if not targets:
+        log.error("no platform is configured; nothing to smoke test")
+        return 1
+    if args.dry_run:
+        for target in targets:
+            log.info("would smoke test %s", target.summary())
+        return 0
+
+    failed: list[str] = []
+    for target in targets:
+        adapter = adapters.create(target, settings)
+        try:
+            with adapter:
+                adapter.smoke_test()
+                footprint = adapter.footprint()
+            log.info("%s: footprint %s", target.name, footprint)
+        except adapters.AdapterError as exc:
+            log.error("%s", exc)
+            failed.append(target.name)
+
+    if failed:
+        log.error("smoke test failed for: %s", ", ".join(failed))
+        return 4
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     setup_logging(args.verbose)
@@ -124,6 +161,9 @@ def main(argv: list[str] | None = None) -> int:
     except dataset.DatasetError as exc:
         log.error("dataset error: %s", exc)
         return 3
+    except adapters.AdapterError as exc:
+        log.error("adapter error: %s", exc)
+        return 4
 
 
 if __name__ == "__main__":
