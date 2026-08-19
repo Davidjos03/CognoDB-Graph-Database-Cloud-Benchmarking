@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # The suite never touches a database, so it proves the harness without
+      # any credentials or containers in CI.
+      - name: Test
+        run: pytest -q
+
+      # No credentials exist in CI, so `validate` would correctly report "no
+      # platform configured". Checking the entry point loads is the honest test.
+      - name: Check the CLI entry point
+        run: gdbbench --help

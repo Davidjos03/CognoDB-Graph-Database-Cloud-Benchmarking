@@ -208,9 +208,13 @@ with a comment explaining each difference.
   latency is one that actually occurred.
 - p50, p95, p99, min, max and mean are all stored; the README leads with
   percentiles because a mean hides the 3-hop tail described above.
-- Warm-up iterations run before the clock starts and are excluded. Cold-start
-  behaviour is not reported: it is a separate measurement and mixing it into
-  warm numbers would be misleading.
+- Warm-up iterations are excluded from every reported percentile, but they are
+  timed and reported separately as "first touch" (see the warm-up table), so the
+  cost of a cold cache is visible without ever being blended into warm numbers.
+- Each query carries the configured timeout as a server-side transaction
+  timeout, so a stuck query is cancelled rather than hanging a run. It is
+  attached to the auto-commit statement rather than wrapped in an explicit
+  transaction, which would add round trips to every measured operation.
 - Throughput for a concurrent level is successful operations divided by the
   elapsed time of the whole parallel window, not the sum of per-client timings.
 
@@ -265,6 +269,19 @@ docker stats --no-stream --format "{{.Name}} {{.CPUPerc}} {{.MemUsage}}"   # ver
 ```
 
 ### 4. Run
+
+One command does everything, containers included:
+
+```bash
+./scripts/run_all.sh            # or .\scripts\run_all.ps1 on Windows
+```
+
+It starts the capped containers, prints `docker stats` so the caps are visible,
+prepares the dataset if needed, benchmarks every configured platform and writes
+the tables and charts. Pass platform names to run a subset, or set
+`SKIP_DOCKER=1` to benchmark cloud targets only.
+
+The individual commands, if you prefer:
 
 ```bash
 gdbbench validate            # print settings and configured targets, connect to nothing
@@ -341,8 +358,11 @@ for DEBUG logging, and `--dry-run` to check configuration without connecting.
    that level with zero failures. Transient connection refusal on this free tier
    is therefore real but recoverable, and the harness now records a refused
    level as a zero-throughput data point instead of aborting the run.
-7. **Cold-start numbers are not reported.** Every figure is warm, after 20
-   discarded iterations.
+7. **"First touch" is not a true cold start.** The warm-up table reports the
+   first call of each workload, which is the closest thing available: the free
+   tier offers no way to restart the instance or drop its caches, so a genuine
+   cold-start measurement cannot be taken here. Every percentile in the main
+   tables is warm, measured after 20 excluded iterations.
 8. **Stored size and memory are not observable on CognoDB's free tier**, so they
    are recorded as `not observable` rather than guessed. FalkorDB and ArangoDB
    do expose real figures, which the adapters read — a difference in
@@ -375,6 +395,7 @@ benchmark/
     memgraph.py     Bolt, with Memgraph's index syntax
     falkordb.py     the same Cypher over the Redis protocol
     arangodb.py     AQL translations, with each difference documented
+scripts/            run_all.sh and run_all.ps1 — containers, benchmark, report
 data/               dataset provenance and the generated CSVs (CSVs not committed)
 results/raw/        one JSON file per platform per run — the evidence
 results/            generated summary.csv, ingest.csv, footprint.csv, tables.md
