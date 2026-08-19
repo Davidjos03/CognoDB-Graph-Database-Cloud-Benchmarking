@@ -48,7 +48,7 @@ services:
 
   memgraph:
     <<: *caps
-    image: memgraph/memgraph:2.22.0
+    image: memgraph/memgraph:3.12.0
     container_name: bench-memgraph
     ports:
       - "7688:7687" # bolt, shifted so it can run beside Neo4j
@@ -68,7 +68,7 @@ services:
 
   falkordb:
     <<: *caps
-    image: falkordb/falkordb:v4.4.4
+    image: falkordb/falkordb:v4.20.3
     container_name: bench-falkordb
     ports:
       - "6379:6379"

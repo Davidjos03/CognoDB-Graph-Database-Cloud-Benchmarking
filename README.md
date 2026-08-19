@@ -25,8 +25,8 @@ observed, and with the round-trip floor subtracted.
 |---|---|---|---|
 | **CognoDB Cloud** | free `c0`, burstable 0.5 vCPU / 512 MB RAM / 1 GB disk, `us-east4` | yes — 3 complete runs | server reports `Neo4j/5.26.0` over `bolt+s://` |
 | Neo4j 5.26 Community | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined, see [Limitations](#limitations-and-honest-caveats) |
-| Memgraph 2.22 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
-| FalkorDB 4.4 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
+| Memgraph 3.12 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
+| FalkorDB 4.20 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
 | ArangoDB 3.12 | self-hosted, capped to 0.5 vCPU / 512 MB | not yet | adapter + capped container defined |
 
 The harness, the adapters and the resource-capped container definitions for all
